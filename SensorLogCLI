@@ -1,0 +1,94 @@
+using System.Globalization;
+
+namespace SensorLogCLI
+{
+    class SensorReading
+    {
+        public DateTime Timestamp { get; set; }
+        public double Value { get; set; }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string filePath = "sensor_data.csv";
+            double anomalyThreshold = 80.0;
+
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine($"File not found: {filePath}");
+                return;
+            }
+
+            List<SensorReading> readings = LoadReadings(filePath);
+
+            if (readings.Count == 0)
+            {
+                Console.WriteLine("No valid sensor data found.");
+                return;
+            }
+
+            GenerateReport(readings, anomalyThreshold);
+        }
+
+        static List<SensorReading> LoadReadings(string filePath)
+        {
+            var readings = new List<SensorReading>();
+
+            foreach (string line in File.ReadLines(filePath).Skip(1))
+            {
+                string[] parts = line.Split(',');
+
+                if (parts.Length != 2)
+                    continue;
+
+                if (DateTime.TryParse(parts[0], out DateTime timestamp) &&
+                    double.TryParse(parts[1], NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double value))
+                {
+                    readings.Add(new SensorReading
+                    {
+                        Timestamp = timestamp,
+                        Value = value
+                    });
+                }
+            }
+
+            return readings;
+        }
+
+        static void GenerateReport(List<SensorReading> readings, double threshold)
+        {
+            double min = readings.Min(r => r.Value);
+            double max = readings.Max(r => r.Value);
+            double avg = readings.Average(r => r.Value);
+
+            var anomalies = readings
+                .Where(r => r.Value > threshold)
+                .ToList();
+
+            Console.WriteLine("=== Sensor Report ===");
+            Console.WriteLine($"Total Readings : {readings.Count}");
+            Console.WriteLine($"Minimum Value : {min:F2}");
+            Console.WriteLine($"Maximum Value : {max:F2}");
+            Console.WriteLine($"Average Value : {avg:F2}");
+            Console.WriteLine();
+
+            Console.WriteLine($"Anomalies (> {threshold})");
+
+            if (anomalies.Count == 0)
+            {
+                Console.WriteLine("None detected.");
+            }
+            else
+            {
+                foreach (var reading in anomalies)
+                {
+                    Console.WriteLine(
+                        $"{reading.Timestamp:yyyy-MM-dd HH:mm:ss} | {reading.Value:F2}");
+                }
+            }
+        }
+    }
+}
